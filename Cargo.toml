@@ -1,6 +1,6 @@
 [package]
 name = "ptrace-inject"
-version = "0.1.0"
+version = "0.1.0-post.0"
 edition = "2021"
 authors = ["Artemis Vellacott <me@arty.li>"]
 license = "MIT OR Apache-2.0"

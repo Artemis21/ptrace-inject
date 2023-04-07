@@ -65,38 +65,7 @@ pub use process::Process;
 mod injection;
 mod libc_addresses;
 mod process;
-/*
-/// Any error this library might encounter.
-#[derive(Debug, thiserror::Error)]
-#[allow(missing_docs)]
-pub enum Error {
-    #[error("couldn't read the procfs filesystem (`/proc`)")]
-    ProcFs(#[from] procfs::ProcError),
-    #[error("interacting with the traced process via ptrace failed")]
-    Ptrace(#[from] pete::Error),
-    #[error("failed to get information about the locally loaded libc via `dlopen` and related functions")]
-    LocalDlopen(#[from] libloading::Error),
-    #[error("couldn't get absolute path from given library path")]
-    InvalidLibraryPath(#[source] std::io::Error),
-    #[error("no executable region was found in the target process' address space")]
-    NoExecutableRegionInTarget,
-    #[error("the target process does not appear to have the libc library loaded")]
-    TargetDoesNotHaveLibc,
-    #[error("calling `malloc` in the target process failed")]
-    InjectedMalloc,
-    #[error("calling `dlopen` in the target process failed")]
-    InjectedDlopen,
-    #[error("the shellcode was meant to trap, but the target quietly exited instead")]
-    ShellcodeDidntTrap,
-    #[error("the target exited quietly as soon as we started tracing it")]
-    TargetExitedImmediately,
-    #[error("the target sent an unexpected signal while running the shellcode")]
-    UnexpectedSignal(pete::Signal),
-}
 
-/// A type alias for `Result<T, Error>`.
-pub type Result<T> = std::result::Result<T, Error>;
-*/
 /// A type capable of loading libraries into a ptrace'd target process.
 ///
 /// When this struct is dropped it will detach from the target process.
