@@ -1,0 +1,29 @@
+[package]
+name = "ptrace-inject"
+version = "0.1.0"
+edition = "2021"
+authors = ["Artemis Vellacott <me@arty.li>"]
+license = "MIT OR Apache-2.0"
+description = "Shared library injection for *nix using ptrace."
+repository = "https://github.com/Artemis21/ptrace-inject"
+documentation = "https://docs.rs/ptrace-inject"
+readme = "README.md"
+keywords = ["dll-injection", "unix", "linux", "library", "command-line"]
+
+[[bin]]
+name = "ptrace-inject"
+required-features = ["cli"]
+
+[features]
+cli = ["clap", "pretty_env_logger", "clap-verbosity-flag", "color-eyre"]
+
+[dependencies]
+clap = { version = "4", features = ["derive"], optional = true }
+clap-verbosity-flag = { version = "2.0.1", optional = true }
+color-eyre = { version = "0.6.2", optional = true }
+eyre = "0.6.8"
+libloading = "0.7"
+log = "0.4.17"
+pete = "0.9"
+pretty_env_logger = { version = "0.4.0", optional = true }
+procfs = "0.15"
