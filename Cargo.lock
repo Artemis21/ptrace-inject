@@ -671,7 +671,7 @@ dependencies = [
 
 [[package]]
 name = "ptrace-inject"
-version = "0.1.0-post.0"
+version = "0.1.1"
 dependencies = [
  "clap",
  "clap-verbosity-flag",

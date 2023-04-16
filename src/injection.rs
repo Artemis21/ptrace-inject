@@ -3,22 +3,12 @@ use eyre::{eyre, Context, Result};
 use std::os::unix::ffi::OsStringExt;
 
 /// The x64 shellcode that will be injected into the tracee.
-const SHELLCODE: [u8; 13] = [
-    // For some reason, `dlopen` segfaults if we don't save and restore these
-    // registers.
-    0x56, // push rsi
-    0x50, // push rax
-    0x53, // push rbx
+const SHELLCODE: [u8; 6] = [
+    // Nop slide to make up for the fact that jumping is imprecise.
+    0x90, 0x90,
     // The tracer does most of the work by putting the arguments into the
     // relevant registers, and the function pointer into `r9`.
     0x41, 0xff, 0xd1, // call r9
-    // Since we're saving and restoring `rax` as mentioned before, put the
-    // return value into `r9` so that the tracer can read it.
-    0x49, 0x89, 0xc1, // mov r9, rax
-    // Restore the saved registers.
-    0x5b, // pop rbx
-    0x58, // pop rax
-    0x5e, // pop rsi
     // Trap so that the tracer can set up the next call.
     0xcc, // int3
 ];
@@ -54,8 +44,7 @@ impl<'a> Injection<'a> {
     ) -> Result<Self> {
         let injected_at = proc
             .find_executable_space()
-            .wrap_err("couldn't find region to write shellcode")?
-            + 0x1000;
+            .wrap_err("couldn't find region to write shellcode")?;
         log::debug!("Injecting shellcode at {injected_at:x}");
         let saved_memory = tracee
             .read_memory(injected_at, SHELLCODE.len())
@@ -130,8 +119,8 @@ impl<'a> Injection<'a> {
     /// stored in the tracee's address space, at `filename_address`.
     fn open_library(&mut self, filename_address: u64) -> Result<()> {
         let result = self
-            .call_function(self.libc.dlopen, filename_address, 1)
-            .wrap_err("calling dlopen in tracee failed")?; // flags = RTLD_LAZY
+            .call_function(self.libc.dlopen, filename_address, 1) // flags = RTLD_LAZY
+            .wrap_err("calling dlopen in tracee failed")?;
         log::debug!("Called dlopen in tracee, result = {result:x}");
         if result == 0 {
             Err(eyre!("dlopen within tracee returned NULL"))
@@ -165,17 +154,19 @@ impl<'a> Injection<'a> {
                 // registers.
                 rdi,
                 rsi,
+                // Ensure that the stack pointer is aligned to a 16 byte boundary, as required by
+                // the x86-64 ABI.
+                rsp: self.saved_registers.rsp & !0xf,
                 ..self.saved_registers
             })
             .wrap_err("setting tracee registers to run shellcode failed")?;
         self.run_until_trap()
             .wrap_err("waiting for shellcode in tracee to trap failed")?;
-        // The shellcode leaves the function result in `r9`.
         let result = self
             .tracee
             .registers()
             .wrap_err("reading shellcode call result from tracee registers failed")?
-            .r9;
+            .rax;
         log::trace!("Function returned {result:x}");
         Ok(result)
     }
@@ -199,9 +190,10 @@ impl<'a> Injection<'a> {
                     self.tracee = tracee;
                     return Ok(());
                 }
-                pete::Stop::SignalDelivery { signal } => {
+                pete::Stop::SignalDelivery { signal } | pete::Stop::Group { signal } => {
+                    let rip = tracee.registers().unwrap().rip;
                     return Err(eyre!(
-                        "shellcode running in tracee sent unexpected signal {signal:?}"
+                        "shellcode running in tracee sent unexpected signal {signal:?} at rip={rip:x}",
                     ));
                 }
                 _ => {

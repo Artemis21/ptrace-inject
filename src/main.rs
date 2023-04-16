@@ -1,5 +1,5 @@
 use clap::Parser;
-use color_eyre::{Result, eyre::eyre};
+use color_eyre::{eyre::eyre, Result};
 use ptrace_inject::{Injector, Process};
 
 #[derive(Parser, Debug)]
@@ -27,7 +27,8 @@ impl Args {
             .filter_level(self.verbose.log_level_filter())
             .init();
         let process = if let Some(name) = self.name {
-            Process::by_name(&name)?.ok_or_else(|| eyre!("could not find process with name {name:?}"))?
+            Process::by_name(&name)?
+                .ok_or_else(|| eyre!("could not find process with name {name:?}"))?
         } else if let Some(pid) = self.pid {
             Process::get(pid)?
         } else {

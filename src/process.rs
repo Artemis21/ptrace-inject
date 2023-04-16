@@ -1,4 +1,4 @@
-use eyre::{eyre, Context, Result};
+use eyre::{eyre, Context, Report, Result};
 use procfs::process;
 use std::fmt::Display;
 
@@ -88,6 +88,21 @@ impl Process {
             })
             .map(|m| m.address.0)
             .ok_or(eyre!("could not find libc in the target process"))
+    }
+
+    /// Get the TIDs of each of the threads in the process.
+    pub(crate) fn thread_ids(&self) -> Result<Vec<i32>> {
+        log::trace!("Getting thread IDs of process with PID {}", self.0.pid);
+        self.0
+            .tasks()
+            .wrap_err("failed to read process thread IDs")?
+            .map(|t| Ok::<_, Report>(t.wrap_err("failed to read process thread IDs")?.tid))
+            .collect()
+    }
+
+    /// Get the process ID.
+    pub(crate) const fn pid(&self) -> i32 {
+        self.0.pid
     }
 }
 

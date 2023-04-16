@@ -99,11 +99,43 @@ impl Injector {
         Ok(Self { proc, tracer })
     }
 
+    /// Attach to all child threads of the process.
+    fn attach_children(&mut self) -> Result<()> {
+        let threads = self
+            .proc
+            .thread_ids()
+            .wrap_err("couldn't get thread IDs of target to attach to them")?;
+        log::trace!("Attaching to {} child threads of target", threads.len() - 1);
+        threads
+            .iter()
+            .filter(|&tid| tid != &self.proc.pid())
+            .try_for_each(|&tid| {
+                self.tracer
+                    .attach(pete::Pid::from_raw(tid))
+                    .wrap_err_with(|| format!("failed to attach to child thread with TID {tid}"))?;
+                // The order that the threads stop is not necessarily the same as the order
+                // that they were attached to, so we don't know what tracee we're getting here.
+                let actual_tid = self
+                    .tracer
+                    .wait()
+                    .wrap_err("failed to wait for thread to stop")?
+                    .ok_or_else(|| {
+                        eyre!("a target thread exited quietly as soon as we started tracing it")
+                    })?
+                    .pid;
+                log::trace!("Attached to thread ID {actual_tid} of target process");
+                Ok(())
+            })
+    }
+
     /// Inject the given library into the traced process.
     pub fn inject(&mut self, library: &std::path::Path) -> Result<()> {
+        self.attach_children()
+            .wrap_err("failed to attach to child threads")?;
         let Some(tracee) = self.tracer.wait()? else {
             return Err(eyre!("the target exited quietly as soon as we started tracing it"));
         };
+        log::trace!("Attached to process with ID {}", tracee.pid);
         let mut injection = Injection::inject(&self.proc, &mut self.tracer, tracee)
             .wrap_err("failed to inject shellcode")?;
         injection
