@@ -111,3 +111,9 @@ impl From<&Process> for pete::Pid {
         Self::from_raw(proc.0.pid)
     }
 }
+
+impl From<&Process> for nix::unistd::Pid {
+    fn from(proc: &Process) -> Self {
+        Self::from_raw(proc.0.pid)
+    }
+}

@@ -572,6 +572,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "nix"
+version = "0.26.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bfdda3d196821d6af13126e40375cdf7da646a96114af134d5f417a9a1dc8e1a"
+dependencies = [
+ "bitflags",
+ "cfg-if",
+ "libc",
+ "static_assertions",
+]
+
+[[package]]
 name = "num-integer"
 version = "0.1.45"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -619,7 +631,7 @@ checksum = "493eb0f2954de9a30ee85b01891f6519e9d065464eaab79aff65d949f44b7850"
 dependencies = [
  "libc",
  "memoffset",
- "nix",
+ "nix 0.25.1",
  "thiserror",
 ]
 
@@ -671,7 +683,7 @@ dependencies = [
 
 [[package]]
 name = "ptrace-inject"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "clap",
  "clap-verbosity-flag",
@@ -679,6 +691,7 @@ dependencies = [
  "eyre",
  "libloading",
  "log",
+ "nix 0.26.2",
  "pete",
  "pretty_env_logger",
  "procfs",
@@ -764,6 +777,12 @@ checksum = "900fba806f70c630b0a382d0d825e17a0f19fcd059a2ade1ff237bcddf446b31"
 dependencies = [
  "lazy_static",
 ]
+
+[[package]]
+name = "static_assertions"
+version = "1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a2eb9349b6444b326872e140eb1cf5e7c522154d69e7a0ffb0fb81c06b37543f"
 
 [[package]]
 name = "strsim"

@@ -5,7 +5,7 @@ use std::os::unix::ffi::OsStringExt;
 /// The x64 shellcode that will be injected into the tracee.
 const SHELLCODE: [u8; 6] = [
     // Nop slide to make up for the fact that jumping is imprecise.
-    0x90, 0x90,
+    0x90, 0x90, // nop; nop
     // The tracer does most of the work by putting the arguments into the
     // relevant registers, and the function pointer into `r9`.
     0x41, 0xff, 0xd1, // call r9
@@ -229,10 +229,6 @@ impl<'a> Injection<'a> {
             .set_registers(self.saved_registers)
             .wrap_err("restoring original registers to tracee failed")?;
         log::trace!("Restored tracee registers");
-        self.tracer
-            .restart(self.tracee, pete::Restart::Continue)
-            .wrap_err("resuming tracee after restoring original state failed")?;
-        log::trace!("Restarted tracee");
         log::debug!("Removed injection");
         self.removed = true;
         Ok(())

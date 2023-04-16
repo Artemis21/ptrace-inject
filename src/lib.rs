@@ -74,6 +74,8 @@ pub struct Injector {
     proc: Process,
     /// The tracer that is controlling the tracee.
     tracer: pete::Ptracer,
+    /// All the PID/TIDs we are attached to.
+    attached: Vec<nix::unistd::Pid>,
 }
 
 impl Injector {
@@ -86,7 +88,7 @@ impl Injector {
         let proc =
             Process::get(child.id()).wrap_err("failed to get newly spawned process by PID")?;
         log::info!("Spawned process with PID {}", proc);
-        Ok(Self { proc, tracer })
+        Self::new(proc, tracer)
     }
 
     /// Attach to an existing process and begin tracing it.
@@ -96,7 +98,21 @@ impl Injector {
             .attach((&proc).into())
             .wrap_err("failed to attach to given process")?;
         log::trace!("Attached to process with PID {}", proc);
-        Ok(Self { proc, tracer })
+        Self::new(proc, tracer)
+    }
+
+    /// Initialise a new injector by attaching to its children.
+    fn new(proc: Process, tracer: pete::Ptracer) -> Result<Self> {
+        let attached = vec![(&proc).into()];
+        let mut injector = Self {
+            proc,
+            tracer,
+            attached,
+        };
+        injector
+            .attach_children()
+            .wrap_err("failed to attach to child threads")?;
+        Ok(injector)
     }
 
     /// Attach to all child threads of the process.
@@ -113,6 +129,7 @@ impl Injector {
                 self.tracer
                     .attach(pete::Pid::from_raw(tid))
                     .wrap_err_with(|| format!("failed to attach to child thread with TID {tid}"))?;
+                self.attached.push(nix::unistd::Pid::from_raw(tid));
                 // The order that the threads stop is not necessarily the same as the order
                 // that they were attached to, so we don't know what tracee we're getting here.
                 let actual_tid = self
@@ -128,10 +145,18 @@ impl Injector {
             })
     }
 
+    /// Detach from all threads we are attached to.
+    pub fn detach_children(&mut self) -> Result<()> {
+        log::trace!("Detaching from {} threads", self.attached.len());
+        // Pete doesn't have a wrapper for this.
+        self.attached.drain(..).try_for_each(|tid| {
+            nix::sys::ptrace::detach(tid, None)
+                .wrap_err_with(|| format!("failed to detach from thread with TID {tid}"))
+        })
+    }
+
     /// Inject the given library into the traced process.
     pub fn inject(&mut self, library: &std::path::Path) -> Result<()> {
-        self.attach_children()
-            .wrap_err("failed to attach to child threads")?;
         let Some(tracee) = self.tracer.wait()? else {
             return Err(eyre!("the target exited quietly as soon as we started tracing it"));
         };
@@ -148,5 +173,14 @@ impl Injector {
             self.proc
         );
         Ok(())
+    }
+}
+
+impl Drop for Injector {
+    fn drop(&mut self) {
+        log::trace!("Dropping injector");
+        if let Err(e) = self.detach_children() {
+            log::error!("Failed to detach from target process: {e}");
+        }
     }
 }
