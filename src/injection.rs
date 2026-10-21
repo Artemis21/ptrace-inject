@@ -74,16 +74,16 @@ impl<'a> Injection<'a> {
     }
 
     /// Use the injected shellcode to load the library at the given path.
-    pub(crate) fn execute(&mut self, filename: &std::path::Path) -> Result<()> {
+    pub(crate) fn execute(&mut self, filename: &std::path::Path) -> Result<u64> {
         let address = self
             .write_filename(filename)
             .wrap_err("couldn't write library filename to tracee address space")?;
-        self.open_library(address)
+        let handle = self.open_library(address)
             .wrap_err("failed to load library in tracee")?;
         self.free_alloc(address)
             .wrap_err("failed to free memory we stored the library filename in")?;
         log::debug!("Executed injected shellcode to load library");
-        Ok(())
+        Ok(handle)
     }
 
     /// Allocate space for, and write, a filename in the tracee's address space.
@@ -117,13 +117,26 @@ impl<'a> Injection<'a> {
 
     /// Open a library in the tracee, where the library's filename is already
     /// stored in the tracee's address space, at `filename_address`.
-    fn open_library(&mut self, filename_address: u64) -> Result<()> {
+    fn open_library(&mut self, filename_address: u64) -> Result<u64> {
         let result = self
             .call_function(self.libc.dlopen, filename_address, 1) // flags = RTLD_LAZY
             .wrap_err("calling dlopen in tracee failed")?;
         log::debug!("Called dlopen in tracee, result = {result:x}");
         if result == 0 {
             Err(eyre!("dlopen within tracee returned NULL"))
+        } else {
+            Ok(result)
+        }
+    }
+
+    /// Close a library in the tracee, given a library handle.
+    fn close_library(&mut self, filename_handle: u64) -> Result<()> {
+        let result = self
+            .call_function(self.libc.dlclose, filename_handle, 0)
+            .wrap_err("Calling dlclose in tracee failed")?;
+        log::debug!("Called dlopen in tracee, result = {result:x}");
+        if result != 0 {
+            Err(eyre!("dlclose within tracee returned, code = {result:x}"))
         } else {
             Ok(())
         }

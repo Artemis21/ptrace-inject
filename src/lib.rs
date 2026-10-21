@@ -156,14 +156,16 @@ impl Injector {
     }
 
     /// Inject the given library into the traced process.
-    pub fn inject(&mut self, library: &std::path::Path) -> Result<()> {
+    pub fn inject(&mut self, library: &std::path::Path) -> Result<u64> {
         let Some(tracee) = self.tracer.wait()? else {
-            return Err(eyre!("the target exited quietly as soon as we started tracing it"));
+            return Err(eyre!(
+                "the target exited quietly as soon as we started tracing it"
+            ));
         };
         log::trace!("Attached to process with ID {}", tracee.pid);
         let mut injection = Injection::inject(&self.proc, &mut self.tracer, tracee)
             .wrap_err("failed to inject shellcode")?;
-        injection
+        let handle = injection
             .execute(library)
             .wrap_err("failed to execute shellcode")?;
         injection.remove().wrap_err("failed to remove shellcode")?;
@@ -172,7 +174,7 @@ impl Injector {
             library.display(),
             self.proc
         );
-        Ok(())
+        Ok(handle)
     }
 }
 

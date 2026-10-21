@@ -25,6 +25,7 @@ impl Process {
     /// Get a process by its PID.
     pub fn get(id: u32) -> Result<Self> {
         // https://unix.stackexchange.com/a/16884 - A PID should fit in 31 bits comfortably.
+        #![allow(clippy::missing_panics_doc)]
         let id = i32::try_from(id).expect("PID to fit in an i32");
         log::trace!("Getting process with PID {}", id);
         Ok(Self(

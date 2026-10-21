@@ -7,6 +7,7 @@ use libloading::os::unix::Library;
 pub struct LibcAddrs {
     pub(crate) malloc: u64,
     pub(crate) dlopen: u64,
+    pub(crate) dlclose: u64,
     pub(crate) free: u64,
 }
 
@@ -29,6 +30,7 @@ impl LibcAddrs {
         let addrs = Self {
             malloc: addr_of("malloc")?,
             dlopen: addr_of("dlopen")?,
+            dlclose: addr_of("dlclose")?,
             free: addr_of("free")?,
         };
         log::debug!("Got libc addresses for current process: {addrs:x?}");
@@ -44,6 +46,7 @@ impl LibcAddrs {
         Self {
             malloc: self.malloc - old_base + new_base,
             dlopen: self.dlopen - old_base + new_base,
+            dlclose: self.dlclose - old_base + new_base,
             free: self.free - old_base + new_base,
         }
     }

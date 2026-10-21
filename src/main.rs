@@ -34,7 +34,9 @@ impl Args {
         } else {
             panic!("no target specified, but clap should have caught this");
         };
-        Injector::attach(process)?.inject(&self.library)
+        Injector::attach(process)?.inject(&self.library)?;
+
+        Ok(())
     }
 }
 
